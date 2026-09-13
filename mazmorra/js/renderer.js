@@ -1,5 +1,5 @@
 import { state } from './state.js';
-import { TEMAS, TEMA_POR_DEFECTO } from '../Themes.js';
+import { TEMAS, TEMA_POR_DEFECTO } from './themes.js';
 
 export function dibujarMapa(ctx, canvas) {
   if (!ctx || !canvas) return;

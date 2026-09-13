@@ -5,6 +5,8 @@ import { editarCasilla, habitacionEnCasilla, moverHabitacion } from './editor.js
 import { clienteAGrid, aplicarZoomEnPunto, moverCamara, encajarVista } from './panzoom.js';
 import { inicializarHistorial, guardarEstado, deshacer, rehacer } from './history.js';
 import { TEMAS } from './themes.js';
+import { generarSVGMapa } from './svgenexport.js';
+import { generarEncuentro, formatearEncuentroHTML } from './encounter.js';
 
 const canvas = document.getElementById('dungeonCanvas');
 const ctx = canvas.getContext('2d');
@@ -62,6 +64,18 @@ window.alternarModoJugador = function () {
   ajustarCanvasAContenedor(); // el área de canvas cambia de tamaño al ocultarse la barra lateral
 };
 
+// ---------- Calculador de Encuentros y Tesoros ----------
+window.generarEncuentroZona = function (id) {
+  const hab = state.habitaciones.find(h => h.id === id);
+  if (!hab) return;
+
+  const resultado = generarEncuentro(hab, state.rng);
+  hab.notas = (hab.notas || '') + formatearEncuentroHTML(resultado);
+
+  window.abrirModalNarrativa(id); // abre las notas para que veas/edites el resultado al instante
+  guardarEstado();
+};
+
 // ---------- Herramientas ----------
 window.seleccionarHerramienta = function (herramienta, btnElement) {
   state.herramientaActual = herramienta;
@@ -80,6 +94,7 @@ window.abrirModalNarrativaGeneral = function () {
   state.zonaSeleccionada = null;
   if (modalZonaTitulo) modalZonaTitulo.innerText = "📜 Narrativa General y Secretos de Mazmorra";
   if (editorNarrativa) editorNarrativa.innerHTML = window.narrativaGlobalTexto || "";
+  renderizarSelectorEnlaceZona();
   if (narrativaModal) narrativaModal.classList.remove('hidden');
 };
 
@@ -90,21 +105,32 @@ window.abrirModalNarrativa = function (id) {
   if (hab && narrativaModal) {
     if (modalZonaTitulo) modalZonaTitulo.innerText = `📖 Configuración & Notas — ${hab.nombre}`;
     if (editorNarrativa) editorNarrativa.innerHTML = hab.notas || "";
+    renderizarSelectorEnlaceZona();
     narrativaModal.classList.remove('hidden');
     renderizarEditorZonasUI();
     dibujarMapa(ctx, canvas);
   }
 };
 
-window.cerrarModalNarrativa = function () {
-  if (editorNarrativa) {
-    if (state.zonaSeleccionada) {
-      const hab = state.habitaciones.find(h => h.id === state.zonaSeleccionada);
-      if (hab) hab.notas = editorNarrativa.innerHTML;
-    } else {
-      window.narrativaGlobalTexto = editorNarrativa.innerHTML;
-    }
+// Guarda el contenido actual del editor en la zona (o en la narrativa general) sin cerrar el modal
+function guardarNotaActual() {
+  if (!editorNarrativa) return;
+  if (state.zonaSeleccionada) {
+    const hab = state.habitaciones.find(h => h.id === state.zonaSeleccionada);
+    if (hab) hab.notas = editorNarrativa.innerHTML;
+  } else {
+    window.narrativaGlobalTexto = editorNarrativa.innerHTML;
   }
+}
+
+// Salta a las notas de otra sala sin perder lo que se escribió en la actual (para los enlaces internos)
+window.irANotasZona = function (id) {
+  guardarNotaActual();
+  window.abrirModalNarrativa(id);
+};
+
+window.cerrarModalNarrativa = function () {
+  guardarNotaActual();
   if (narrativaModal) narrativaModal.classList.add('hidden');
   guardarEstado();
 };
@@ -116,6 +142,51 @@ window.cambiarColorTexto = function (color) {
 window.aplicarFormato = function (comando) {
   document.execCommand(comando, false, null);
 };
+
+// ---------- Notas enriquecidas: imágenes y enlaces entre salas ----------
+function renderizarSelectorEnlaceZona() {
+  const sel = document.getElementById('selectorEnlaceZona');
+  if (!sel) return;
+  const otras = state.habitaciones.filter(h => h.id !== state.zonaSeleccionada);
+  sel.innerHTML = otras.length
+    ? otras.map(h => `<option value="${h.id}">${h.nombre}</option>`).join('')
+    : '<option value="">Sin otras salas</option>';
+}
+
+window.insertarEnlaceZona = function () {
+  const sel = document.getElementById('selectorEnlaceZona');
+  if (!sel || !sel.value) return;
+  const hab = state.habitaciones.find(h => h.id === parseInt(sel.value));
+  if (!hab || !editorNarrativa) return;
+
+  editorNarrativa.focus();
+  const html = `<a href="#" class="enlace-zona" contenteditable="false" data-zona-id="${hab.id}">🔗 ${hab.nombre}</a>&nbsp;`;
+  document.execCommand('insertHTML', false, html);
+};
+
+window.insertarImagenNota = function (event) {
+  const archivo = event.target.files[0];
+  if (!archivo || !editorNarrativa) return;
+
+  const lector = new FileReader();
+  lector.onload = () => {
+    editorNarrativa.focus();
+    const html = `<img src="${lector.result}" alt="imagen de referencia" style="max-width:100%;border-radius:6px;margin:6px 0;display:block;" />`;
+    document.execCommand('insertHTML', false, html);
+  };
+  lector.readAsDataURL(archivo);
+  event.target.value = ''; // permite volver a seleccionar el mismo archivo después
+};
+
+if (editorNarrativa) {
+  editorNarrativa.addEventListener('click', (e) => {
+    const enlace = e.target.closest('a.enlace-zona');
+    if (enlace) {
+      e.preventDefault();
+      window.irANotasZona(parseInt(enlace.dataset.zonaId));
+    }
+  });
+}
 
 window.actualizarNombreZona = function (id, nuevoNombre) {
   const hab = state.habitaciones.find(h => h.id === id);
@@ -168,6 +239,9 @@ function renderizarEditorZonasUI() {
         </button>
         <button onclick="abrirModalNarrativa(${hab.id})" class="btn-zona-notas">
           📝 Notas
+        </button>
+        <button onclick="generarEncuentroZona(${hab.id})" class="btn-zona-encuentro" title="Generar encuentro y tesoro para esta sala">
+          🎲
         </button>
       </div>
     `;
@@ -306,6 +380,18 @@ window.exportarPNG = function () {
     enlace.click();
     URL.revokeObjectURL(url);
   }, 'image/png');
+};
+
+// ---------- Exportación Vectorial (SVG) ----------
+window.exportarSVG = function () {
+  const svgTexto = generarSVGMapa();
+  const blob = new Blob([svgTexto], { type: 'image/svg+xml' });
+  const url = URL.createObjectURL(blob);
+  const enlace = document.createElement('a');
+  enlace.href = url;
+  enlace.download = `mazmorra-${state.semillaActual || 'mapa'}.svg`;
+  enlace.click();
+  URL.revokeObjectURL(url);
 };
 
 function actualizarUrlSemilla() {
