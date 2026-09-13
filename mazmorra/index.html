@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generador de Mazmorras — Híbrido Responsive</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <header class="top-bar">
+    <div class="brand"><h1>🗺️ Generador de Mazmorras</h1></div>
+    <div class="config-controls">
+      <label>Ancho <input type="number" id="widthInput" value="16" min="4" max="60"></label>
+      <label>Alto <input type="number" id="heightInput" value="12" min="4" max="60"></label>
+      <label>Semilla <input type="text" id="seedInput" placeholder="auto"></label>
+      <button class="btn-primary" onclick="generarNuevaMazmorra(document.getElementById('seedInput').value || null)">🎲 Generar</button>
+      <button class="btn-primary" onclick="guardarSemillaFavorita()">⭐ Guardar semilla</button>
+    </div>
+    <button class="btn-narrativa-top" onclick="abrirModalNarrativaGeneral()">📜 Narrativa General</button>
+  </header>
+
+  <div class="main-container">
+    <section class="canvas-section" id="map-container">
+      <div class="canvas-wrapper">
+        <canvas id="dungeonCanvas"></canvas>
+      </div>
+
+      <div class="canvas-hud">
+        <button class="hud-btn" id="btnUndo" onclick="deshacerAccion()" title="Deshacer (Ctrl+Z)">↶</button>
+        <button class="hud-btn" id="btnRedo" onclick="rehacerAccion()" title="Rehacer (Ctrl+Y)">↷</button>
+        <button class="hud-btn" onclick="encajarVistaManual()" title="Encajar vista">⤢</button>
+        <span class="hud-hint">Rueda: zoom · Espacio/click central: mover mapa</span>
+      </div>
+    </section>
+
+    <aside class="sidebar">
+      <div class="panel-section">
+        <h3>Herramientas de Edición</h3>
+        <div class="tools-grid">
+          <button class="tool-btn active" onclick="seleccionarHerramienta('muro', this)">🧱 Muro</button>
+          <button class="tool-btn" onclick="seleccionarHerramienta('suelo', this)">⬜ Suelo</button>
+          <button class="tool-btn" onclick="seleccionarHerramienta('entrada', this)">🟢 Entrada</button>
+          <button class="tool-btn" onclick="seleccionarHerramienta('salida', this)">🔵 Salida</button>
+          <button class="tool-btn" onclick="seleccionarHerramienta('enemigo', this)">👹 Enemigo</button>
+          <button class="tool-btn" onclick="seleccionarHerramienta('trampa', this)">⚠️ Trampa</button>
+          <button class="tool-btn" onclick="seleccionarHerramienta('mover_zona', this)">✋ Mover zona</button>
+          <button class="tool-btn" onclick="seleccionarHerramienta('borrar_entidad', this)">🗑️ Borrar</button>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <h3>Semillas guardadas</h3>
+        <div id="listaSemillas" class="semillas-lista"></div>
+      </div>
+
+      <div class="panel-section" style="flex:1; min-height:0;">
+        <h3>Editor de Zonas</h3>
+        <input type="text" id="filtroZonas" placeholder="🔍 Buscar zona por nombre..." class="zona-text-input" style="margin-bottom:10px;">
+        <div class="zonas-list" id="zonasContainer"></div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Modal de narrativa -->
+  <div class="modal-overlay hidden" id="narrativaModal">
+    <div class="modal-content-wide">
+      <div class="modal-header">
+        <h2 id="modalZonaTitulo">📜 Narrativa</h2>
+        <button class="modal-close" onclick="cerrarModalNarrativa()">✕</button>
+      </div>
+      <div class="modal-toolbar-row">
+        <div class="editor-toolbar">
+          <button class="tool-text-btn" onclick="aplicarFormato('bold')"><b>B</b></button>
+          <button class="tool-text-btn" onclick="aplicarFormato('italic')"><i>I</i></button>
+          <button class="tool-text-btn" onclick="aplicarFormato('underline')"><u>U</u></button>
+          <input type="color" onchange="cambiarColorTexto(this.value)" title="Color de texto">
+        </div>
+      </div>
+      <div class="modal-body">
+        <div id="editorNarrativa" contenteditable="true"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-guardar" onclick="cerrarModalNarrativa()">Guardar y Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
