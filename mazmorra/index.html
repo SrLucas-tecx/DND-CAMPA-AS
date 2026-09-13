@@ -16,8 +16,10 @@
       <label>Semilla <input type="text" id="seedInput" placeholder="auto"></label>
       <button class="btn-primary" onclick="generarNuevaMazmorra(document.getElementById('seedInput').value || null)">🎲 Generar</button>
       <button class="btn-primary" onclick="guardarSemillaFavorita()">⭐ Guardar semilla</button>
+      <button class="btn-primary" onclick="exportarPNG()">📥 Exportar PNG</button>
     </div>
     <button class="btn-narrativa-top" onclick="abrirModalNarrativaGeneral()">📜 Narrativa General</button>
+    <button class="btn-modo" id="btnModoJugador" onclick="alternarModoJugador()">👁️ Vista Jugador</button>
   </header>
 
   <div class="main-container">
@@ -52,6 +54,11 @@
       <div class="panel-section">
         <h3>Semillas guardadas</h3>
         <div id="listaSemillas" class="semillas-lista"></div>
+      </div>
+
+      <div class="panel-section">
+        <h3>Temáticas y Biomas</h3>
+        <div id="temasContainer" class="temas-grid"></div>
       </div>
 
       <div class="panel-section" style="flex:1; min-height:0;">

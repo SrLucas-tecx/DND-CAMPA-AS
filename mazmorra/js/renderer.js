@@ -1,11 +1,14 @@
 import { state } from './state.js';
+import { TEMAS, TEMA_POR_DEFECTO } from '../Themes.js';
 
 export function dibujarMapa(ctx, canvas) {
   if (!ctx || !canvas) return;
 
+  const tema = TEMAS[state.temaActual] || TEMAS[TEMA_POR_DEFECTO];
+
   // Limpieza en coordenadas de pantalla (sin transformar)
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = '#0d0d11';
+  ctx.fillStyle = tema.fondo;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   ctx.save();
@@ -13,34 +16,41 @@ export function dibujarMapa(ctx, canvas) {
   ctx.scale(state.camara.zoom, state.camara.zoom);
 
   const T = state.tamanoCasilla;
+  const jugador = state.modoJugador;
 
   // 1. Dibujar Matriz (Muros, Suelos y Elementos)
   for (let y = 0; y < state.ALTO_MAPA; y++) {
     for (let x = 0; x < state.ANCHO_MAPA; x++) {
-      const tipo = (state.grid && state.grid[y]) ? state.grid[y][x] : 'muro';
+      let tipo = (state.grid && state.grid[y]) ? state.grid[y][x] : 'muro';
+      if (jugador && (tipo === 'enemigo' || tipo === 'trampa')) tipo = 'suelo'; // ocultos para el jugador
       const px = x * T;
       const py = y * T;
 
       if (tipo === 'muro') {
-        ctx.fillStyle = '#18181c';
+        ctx.fillStyle = tema.muro;
         ctx.fillRect(px, py, T, T);
-        ctx.strokeStyle = '#282830';
+        ctx.strokeStyle = tema.muroBorde;
         ctx.strokeRect(px, py, T, T);
       } else {
-        ctx.fillStyle = '#2d2d38';
+        ctx.fillStyle = tema.suelo;
         ctx.fillRect(px, py, T, T);
-        ctx.strokeStyle = '#383846';
+        ctx.strokeStyle = tema.sueloBorde;
         ctx.strokeRect(px, py, T, T);
 
-        if (tipo === 'entrada') dibujarEntrada(ctx, px, py, T);
-        else if (tipo === 'salida') dibujarSalida(ctx, px, py, T);
-        else if (tipo === 'enemigo') dibujarEnemigo(ctx, px, py, T);
-        else if (tipo === 'trampa') dibujarTrampa(ctx, px, py, T);
+        if (tipo === 'entrada') dibujarEntrada(ctx, px, py, T, tema);
+        else if (tipo === 'salida') dibujarSalida(ctx, px, py, T, tema);
+        else if (tipo === 'enemigo') dibujarEnemigo(ctx, px, py, T, tema);
+        else if (tipo === 'trampa') dibujarTrampa(ctx, px, py, T, tema);
       }
     }
   }
 
-  // 2. Delimitar y Nombrar Zonas
+  // 2. Delimitar y Nombrar Zonas — se omite por completo en Vista de Jugador
+  if (jugador) {
+    ctx.restore();
+    return;
+  }
+
   ctx.font = 'bold 11px Arial';
   ctx.textAlign = 'left';
 
@@ -86,8 +96,8 @@ export function dibujarMapa(ctx, canvas) {
   ctx.restore();
 }
 
-function dibujarEntrada(ctx, px, py, T) {
-  ctx.fillStyle = '#4caf50';
+function dibujarEntrada(ctx, px, py, T, tema) {
+  ctx.fillStyle = tema.entrada;
   ctx.fillRect(px + 2, py + 2, T - 4, T - 4);
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 10px Arial';
@@ -96,8 +106,8 @@ function dibujarEntrada(ctx, px, py, T) {
   ctx.textAlign = 'left';
 }
 
-function dibujarSalida(ctx, px, py, T) {
-  ctx.fillStyle = '#2196f3';
+function dibujarSalida(ctx, px, py, T, tema) {
+  ctx.fillStyle = tema.salida;
   ctx.fillRect(px + 2, py + 2, T - 4, T - 4);
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 10px Arial';
@@ -106,20 +116,20 @@ function dibujarSalida(ctx, px, py, T) {
   ctx.textAlign = 'left';
 }
 
-function dibujarEnemigo(ctx, px, py, T) {
+function dibujarEnemigo(ctx, px, py, T, tema) {
   const cx = px + T / 2;
   const cy = py + T / 2;
-  ctx.fillStyle = '#f44336';
+  ctx.fillStyle = tema.enemigo;
   ctx.beginPath();
   ctx.arc(cx, cy, T / 3, 0, Math.PI * 2);
   ctx.fill();
-  ctx.strokeStyle = '#801010';
+  ctx.strokeStyle = tema.enemigoBorde;
   ctx.lineWidth = 1;
   ctx.stroke();
 }
 
-function dibujarTrampa(ctx, px, py, T) {
-  ctx.strokeStyle = '#ff9800';
+function dibujarTrampa(ctx, px, py, T, tema) {
+  ctx.strokeStyle = tema.trampa;
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(px + 4, py + 4);

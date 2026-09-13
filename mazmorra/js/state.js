@@ -1,3 +1,5 @@
+import { TEMA_POR_DEFECTO } from './themes.js';
+
 export const TAMANO_CHUNK = 4;
 export const TAMANO_CASILLA_BASE = 20;
 
@@ -22,6 +24,12 @@ export const state = {
 
   // Cámara para Pan & Zoom (estilo Figma)
   camara: { x: 0, y: 0, zoom: 1 },
+
+  // Vista de Jugador: oculta trampas/enemigos/zonas/notas y desactiva la edición
+  modoJugador: false,
+
+  // Bioma / temática visual activa
+  temaActual: TEMA_POR_DEFECTO,
 
   // Estado de interacción
   espacioPresionado: false,

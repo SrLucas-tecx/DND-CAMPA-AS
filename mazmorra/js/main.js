@@ -4,6 +4,7 @@ import { dibujarMapa } from './renderer.js';
 import { editarCasilla, habitacionEnCasilla, moverHabitacion } from './editor.js';
 import { clienteAGrid, aplicarZoomEnPunto, moverCamara, encajarVista } from './panzoom.js';
 import { inicializarHistorial, guardarEstado, deshacer, rehacer } from './history.js';
+import { TEMAS } from './themes.js';
 
 const canvas = document.getElementById('dungeonCanvas');
 const ctx = canvas.getContext('2d');
@@ -14,6 +15,52 @@ const modalZonaTitulo = document.getElementById('modalZonaTitulo');
 const editorNarrativa = document.getElementById('editorNarrativa');
 
 window.narrativaGlobalTexto = "";
+
+// ---------- Temáticas y Biomas Visuales ----------
+window.cambiarTema = function (temaId) {
+  if (!TEMAS[temaId]) return;
+  state.temaActual = temaId;
+  document.querySelectorAll('.tema-swatch').forEach(b => b.classList.remove('active'));
+  const btn = document.querySelector(`.tema-swatch[data-tema="${temaId}"]`);
+  if (btn) btn.classList.add('active');
+  dibujarMapa(ctx, canvas);
+};
+
+function renderizarSelectorTemas() {
+  const cont = document.getElementById('temasContainer');
+  if (!cont) return;
+  cont.innerHTML = Object.entries(TEMAS).map(([id, t]) => `
+    <button
+      class="tema-swatch ${state.temaActual === id ? 'active' : ''}"
+      data-tema="${id}"
+      onclick="cambiarTema('${id}')"
+      style="background: linear-gradient(135deg, ${t.suelo}, ${t.muro});"
+      title="${t.nombre}"
+    >
+      <span class="tema-swatch-dot" style="background:${t.entrada}"></span>
+      <span class="tema-swatch-nombre">${t.nombre}</span>
+    </button>
+  `).join('');
+}
+
+// ---------- Vista de Jugador vs. Vista de DJ ----------
+window.alternarModoJugador = function () {
+  state.modoJugador = !state.modoJugador;
+
+  document.body.classList.toggle('modo-jugador', state.modoJugador);
+  const btn = document.getElementById('btnModoJugador');
+  if (btn) {
+    btn.innerHTML = state.modoJugador ? '🛡️ Volver a Vista DJ' : '👁️ Vista Jugador';
+    btn.classList.toggle('activo', state.modoJugador);
+  }
+
+  // Al activar la vista de jugador, cierra cualquier modal de notas abierto (son información del DJ)
+  if (state.modoJugador && narrativaModal && !narrativaModal.classList.contains('hidden')) {
+    narrativaModal.classList.add('hidden');
+  }
+
+  ajustarCanvasAContenedor(); // el área de canvas cambia de tamaño al ocultarse la barra lateral
+};
 
 // ---------- Herramientas ----------
 window.seleccionarHerramienta = function (herramienta, btnElement) {
@@ -166,6 +213,20 @@ window.generarNuevaMazmorra = function (semillaManual = null) {
 const LS_KEY_FAVORITOS = 'mazmorra_semillas_favoritas';
 const LS_KEY_RECIENTES = 'mazmorra_semillas_recientes';
 
+// ---------- Biblioteca de Semillas Predefinidas ----------
+const SEMILLAS_PREDEFINIDAS = [
+  { nombre: '🌀 Laberinto Compacto', semilla: 'preset-laberinto-compacto' },
+  { nombre: '🏰 Complejo Amplio', semilla: 'preset-complejo-amplio' },
+  { nombre: '🐉 Guarida del Dragón', semilla: 'preset-guarida-dragon' },
+  { nombre: '💀 Catacumbas Densas', semilla: 'preset-catacumbas-densas' },
+  { nombre: '🗡️ Fortaleza Simétrica', semilla: 'preset-fortaleza-simetrica' },
+  { nombre: '🕸️ Red de Túneles', semilla: 'preset-red-tuneles' }
+];
+
+window.usarSemillaPredefinida = function (semilla) {
+  generarNuevaMazmorra(semilla);
+};
+
 function leerLS(key) {
   try { return JSON.parse(localStorage.getItem(key)) || []; } catch { return []; }
 }
@@ -196,6 +257,12 @@ function renderizarListaSemillas() {
   const recientes = leerLS(LS_KEY_RECIENTES);
 
   let html = '';
+
+  html += '<div class="semillas-subtitulo">📚 Predefinidas</div>';
+  SEMILLAS_PREDEFINIDAS.forEach(p => {
+    html += `<button class="semilla-chip semilla-chip-preset" onclick="usarSemillaPredefinida('${p.semilla}')">${p.nombre}</button>`;
+  });
+
   if (favoritos.length) {
     html += '<div class="semillas-subtitulo">⭐ Favoritas</div>';
     favoritos.forEach(f => {
@@ -208,8 +275,38 @@ function renderizarListaSemillas() {
       html += `<button class="semilla-chip" onclick="generarNuevaMazmorra('${s}')">${s}</button>`;
     });
   }
-  cont.innerHTML = html || '<p style="font-size:12px;color:#888;">Aún no hay semillas guardadas.</p>';
+  cont.innerHTML = html;
 }
+
+
+
+// ---------- Exportación en Alta Resolución (PNG) ----------
+window.exportarPNG = function () {
+  const ESCALA_EXPORT = 2; // 2x para impresión nítida
+  const T = state.tamanoCasilla;
+  const anchoMundo = state.ANCHO_MAPA * T;
+  const altoMundo = state.ALTO_MAPA * T;
+
+  const offCanvas = document.createElement('canvas');
+  offCanvas.width = Math.round(anchoMundo * ESCALA_EXPORT);
+  offCanvas.height = Math.round(altoMundo * ESCALA_EXPORT);
+  const offCtx = offCanvas.getContext('2d');
+
+  // Dibuja el mapa completo (sin recortes de pan/zoom) en el canvas temporal
+  const camaraOriginal = { ...state.camara };
+  state.camara = { x: 0, y: 0, zoom: ESCALA_EXPORT };
+  dibujarMapa(offCtx, offCanvas);
+  state.camara = camaraOriginal;
+
+  offCanvas.toBlob((blob) => {
+    const url = URL.createObjectURL(blob);
+    const enlace = document.createElement('a');
+    enlace.href = url;
+    enlace.download = `mazmorra-${state.semillaActual || 'mapa'}.png`;
+    enlace.click();
+    URL.revokeObjectURL(url);
+  }, 'image/png');
+};
 
 function actualizarUrlSemilla() {
   const url = new URL(window.location.href);
@@ -292,6 +389,9 @@ canvas.addEventListener('mousedown', (e) => {
     return;
   }
 
+  // En Vista de Jugador solo se permite navegar (pan/zoom), no editar el mapa
+  if (state.modoJugador) return;
+
   const { gridX, gridY } = clienteAGrid(canvas, e.clientX, e.clientY);
 
   if (state.herramientaActual === 'mover_zona') {
@@ -364,6 +464,7 @@ function inicializar() {
   const params = new URLSearchParams(window.location.search);
   const semillaUrl = params.get('seed');
   renderizarListaSemillas();
+  renderizarSelectorTemas();
   window.generarNuevaMazmorra(semillaUrl);
 }
 

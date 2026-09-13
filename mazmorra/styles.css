@@ -106,6 +106,37 @@ html, body {
   background: #7986cb;
 }
 
+.btn-modo {
+  background: #37474f;
+  color: #fff;
+  border: 1px solid #546e7a;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 0.85rem;
+}
+
+.btn-modo:hover {
+  background: #455a64;
+}
+
+.btn-modo.activo {
+  background: #ef6c00;
+  border-color: #ffb74d;
+}
+
+/* Vista de Jugador: oculta las herramientas del DJ y expande el mapa */
+body.modo-jugador .config-controls,
+body.modo-jugador .btn-narrativa-top,
+body.modo-jugador .sidebar {
+  display: none;
+}
+
+body.modo-jugador .main-container {
+  grid-template-columns: 1fr;
+}
+
 /* Contenedor Principal Adaptable (Layout Grid) */
 .main-container {
   display: grid;
@@ -476,6 +507,58 @@ html, body {
 .semilla-chip:hover {
   background: #383848;
   color: #fff;
+}
+
+.semilla-chip-preset {
+  border-color: #5c6bc0;
+  color: #b3bbf0;
+}
+
+.semilla-chip-preset:hover {
+  background: #3a3a5a;
+  color: #fff;
+}
+
+/* Selector de Temáticas / Biomas */
+.temas-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.tema-swatch {
+  border: 2px solid #3a3a4a;
+  border-radius: 8px;
+  padding: 10px 8px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-height: 54px;
+}
+
+.tema-swatch:hover {
+  border-color: #6c7a92;
+}
+
+.tema-swatch.active {
+  border-color: #ffffff;
+  box-shadow: 0 0 0 1px #ffffff;
+}
+
+.tema-swatch-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.tema-swatch-nombre {
+  font-size: 0.72rem;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  line-height: 1.2;
 }
 
 .modal-toolbar-row {
